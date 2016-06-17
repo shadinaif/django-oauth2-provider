@@ -1,5 +1,4 @@
 from provider.oauth2.forms import ClientAuthForm, PublicPasswordGrantForm
-from provider.oauth2.models import AccessToken
 from provider.utils import now
 
 
@@ -91,6 +90,7 @@ class AccessTokenBackend(object):
     """
 
     def authenticate(self, access_token=None, client=None):
+        from provider.oauth2.models import AccessToken
         try:
             return AccessToken.objects.get(token=access_token,
                                            expires__gt=now(),
