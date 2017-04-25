@@ -138,6 +138,9 @@ class AuthorizationRequestForm(ScopeMixin, OAuthForm):
     The scope that the authorization should include.
     """
 
+    # Nonce passed back to OpenID Connect ID tokens to avoid replay attacks
+    nonce = forms.CharField(required=False)
+
     def clean_response_type(self):
         """
         :rfc:`3.1.1` Lists of values are space delimited.
@@ -182,6 +185,7 @@ class AuthorizationForm(ScopeMixin, OAuthForm):
     """
     authorize = forms.BooleanField(required=False)
     scope = ScopeChoiceField(choices=SCOPE_NAMES, required=False)
+    nonce = forms.CharField(required=False)
 
     def save(self, **kwargs):
         authorize = self.cleaned_data.get('authorize')
@@ -191,6 +195,7 @@ class AuthorizationForm(ScopeMixin, OAuthForm):
 
         grant = Grant()
         grant.scope = self.cleaned_data.get('scope')
+        grant.nonce = self.cleaned_data.get('nonce')
         return grant
 
 

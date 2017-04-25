@@ -1,6 +1,7 @@
 import datetime
 import json
 import urlparse
+import uuid
 
 import ddt
 from django.conf import settings
@@ -20,6 +21,10 @@ from provider.utils import now as date_now
 
 
 class BaseOAuth2TestCase(TestCase):
+    def setUp(self):
+        super(BaseOAuth2TestCase, self).setUp()
+        self.nonce = unicode(uuid.uuid4())
+
     def login(self):
         self.client.login(username='test-user-1', password='test')
 
@@ -55,8 +60,8 @@ class BaseOAuth2TestCase(TestCase):
 
     def _login_and_authorize(self, url_func=None):
         if url_func is None:
-            url_func = lambda: self.auth_url() + '?client_id={0}&response_type=code&state=abc'.format(
-                self.get_client().client_id)
+            url_func = lambda: '{auth_url}?client_id={client_id}&response_type=code&state=abc&nonce={nonce}'.format(
+                auth_url=self.auth_url(), client_id=self.get_client().client_id, nonce=self.nonce)
 
         response = self.client.get(url_func())
         response = self.client.get(self.auth_url2())
@@ -71,6 +76,7 @@ class AuthorizationTest(BaseOAuth2TestCase):
     fixtures = ['test_oauth2']
 
     def setUp(self):
+        super(AuthorizationTest, self).setUp()
         self._old_login = settings.LOGIN_URL
         settings.LOGIN_URL = '/login/'
 
@@ -768,6 +774,7 @@ class DeleteExpiredTest(BaseOAuth2TestCase):
     fixtures = ['test_oauth2']
 
     def setUp(self):
+        super(DeleteExpiredTest, self).setUp()
         self._delete_expired = constants.DELETE_EXPIRED
         constants.DELETE_EXPIRED = True
 

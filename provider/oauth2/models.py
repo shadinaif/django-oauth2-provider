@@ -111,6 +111,7 @@ class Grant(models.Model):
     user = models.ForeignKey(AUTH_USER_MODEL, related_name='dop_grant')
     client = models.ForeignKey(Client)
     code = models.CharField(max_length=255, default=long_token)
+    nonce = models.CharField(max_length=255, blank=True, default='')
     expires = models.DateTimeField(default=get_code_expiry)
     redirect_uri = models.CharField(max_length=255, blank=True)
     scope = models.IntegerField(default=0)

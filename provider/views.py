@@ -82,7 +82,7 @@ class AccessTokenMixin(object):
         """
         raise NotImplementedError  # pragma: no cover
 
-    def access_token_response_data(self, access_token, response_type=None):
+    def access_token_response_data(self, access_token, response_type=None, nonce=''):
         """
         Returns access token data as defined in :rfc:`5.1`.
 
@@ -575,12 +575,12 @@ class AccessToken(OAuthView, Mixin, AccessTokenMixin):
         kwargs.setdefault('content_type', 'application/json')
         return HttpResponse(json.dumps(error), status=status, **kwargs)
 
-    def access_token_response(self, access_token, data=None):
+    def access_token_response(self, access_token, nonce=''):
         """
         Returns a successful response after creating the access token
         as defined in :rfc:`5.1`.
         """
-        response_data = self.access_token_response_data(access_token)
+        response_data = self.access_token_response_data(access_token, nonce=nonce)
         return HttpResponse(
             json.dumps(response_data), content_type='application/json'
         )
@@ -603,7 +603,8 @@ class AccessToken(OAuthView, Mixin, AccessTokenMixin):
 
         self.invalidate_grant(grant)
 
-        return self.access_token_response(at)
+        nonce = grant.nonce
+        return self.access_token_response(at, nonce)
 
     def refresh_token(self, request, data, client):
         """
