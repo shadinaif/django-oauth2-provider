@@ -21,9 +21,7 @@ setup(
         'Programming Language :: Python',
         'Framework :: Django',
     ],
-    install_requires=[
-        'shortuuid>=0.4.3,<1.0.0'
-    ],
+    install_requires=['shortuuid>=0.4.3,<1.0.0', 'Django>=1.8,<2.0'],
     include_package_data=True,
     zip_safe=False,
 )

@@ -6,8 +6,11 @@ html_coverage:
 	coverage html && open htmlcov/index.html
 
 requirements:
-	pip install -r requirements.txt
+	pip install -r requirements/requirements.txt
+
+test_requirements:
+	pip install -r requirements/requirements.txt
+	pip install -r requirements/requirements-test.txt
 
 test:
-	coverage run --branch --source=provider manage.py test provider provider.oauth2
-	coverage report
+	tox

@@ -8,12 +8,13 @@ from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
 from django.http import QueryDict
-from django.test import TestCase
+from django.test import TestCase, RequestFactory
 from django.utils.html import escape
 from mock import patch
 
 from provider import constants, scope
-from provider.oauth2.backends import AccessTokenBackend, BasicClientBackend, RequestParamsClientBackend
+from provider.oauth2.backends import AccessTokenBackend, BasicClientBackend, RequestParamsClientBackend, \
+    PublicPasswordBackend
 from provider.oauth2.forms import ClientForm
 from provider.oauth2.models import Client, Grant, AccessToken, RefreshToken
 from provider.templatetags.scope import scopes
@@ -113,7 +114,7 @@ class AuthorizationTest(BaseOAuth2TestCase):
         response = self.client.post(self.auth_url2(), {'authorize': True})
         fragment = urlparse.urlparse(response['Location']).fragment
         auth_response_data = {k: v[0] for k, v in urlparse.parse_qs(fragment).items()}
-        self.assertEqual(auth_response_data['scope'], expected_scope)
+        self.assertItemsEqual(auth_response_data['scope'].split(' '), expected_scope.split(' '))
         self.assertEqual(auth_response_data['access_token'], AccessToken.objects.all()[0].token)
         self.assertEqual(auth_response_data['token_type'], 'Bearer')
         self.assertEqual(int(auth_response_data['expires_in']), constants.EXPIRE_DELTA.days * 60 * 60 * 24 - 1)
@@ -669,22 +670,52 @@ class AuthBackendTest(BaseOAuth2TestCase):
     fixtures = ['test_oauth2']
 
     def test_basic_client_backend(self):
-        request = type('Request', (object,), {'META': {}})()
-        request.META['HTTP_AUTHORIZATION'] = "Basic " + "{0}:{1}".format(
+        factory = RequestFactory()
+
+        auth = "Basic " + "{0}:{1}".format(
             self.get_client().client_id,
             self.get_client().client_secret).encode('base64')
+
+        request = factory.get('', HTTP_AUTHORIZATION=auth)
 
         self.assertEqual(BasicClientBackend().authenticate(request).id,
                          2, "Didn't return the right client.")
 
+    def test_basic_client_backend_fail(self):
+        factory = RequestFactory()
+
+        # No colon here should cause a ValueError for malformed auth
+        auth = "Basic " + "{0}{1}".format(
+            self.get_client().client_id,
+            self.get_client().client_secret).encode('base64')
+
+        request = factory.get('', HTTP_AUTHORIZATION=auth)
+
+        self.assertIsNone(BasicClientBackend().authenticate(request))
+
+        # No auth header should cause some other error
+        factory = RequestFactory()
+        request = factory.post('')
+        self.assertIsNone(BasicClientBackend().authenticate(request))
+
     def test_request_params_client_backend(self):
-        request = type('Request', (object,), {'REQUEST': {}})()
+        factory = RequestFactory()
+        auth = {'client_id': self.get_client().client_id,
+                'client_secret': self.get_client().client_secret}
+        request = factory.post('', auth)
 
-        request.REQUEST['client_id'] = self.get_client().client_id
-        request.REQUEST['client_secret'] = self.get_client().client_secret
+        self.assertEqual(RequestParamsClientBackend().authenticate(request).id, 2, "Didn't return the right client.'")
 
-        self.assertEqual(RequestParamsClientBackend().authenticate(request).id,
-                         2, "Didn't return the right client.'")
+    def test_backends_disallow_get(self):
+        self.assertIsNone(RequestParamsClientBackend().authenticate(None))
+
+        auth = {'client_id': self.get_client().client_id,
+                'client_secret': self.get_client().client_secret}
+        factory = RequestFactory()
+        request = factory.get('', auth)
+
+        self.assertIsNone(RequestParamsClientBackend().authenticate(request))
+        self.assertIsNone(PublicPasswordBackend().authenticate(request))
 
     def test_access_token_backend(self):
         user = self.get_user()
@@ -694,6 +725,13 @@ class AuthBackendTest(BaseOAuth2TestCase):
         authenticated = backend.authenticate(access_token=token.token, client=client)
 
         self.assertIsNotNone(authenticated)
+
+    def test_access_token_backend_does_not_exist(self):
+        client = self.get_client()
+        backend = AccessTokenBackend()
+        authenticated = backend.authenticate(access_token="doesnotexist", client=client)
+
+        self.assertIsNone(authenticated)
 
 
 class EnforceSecureTest(BaseOAuth2TestCase):

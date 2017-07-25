@@ -21,6 +21,7 @@ DATABASES = {
     }
 }
 
+PASSWORD_HASHERS = ['django.contrib.auth.hashers.SHA1PasswordHasher']
 
 SITE_ID = 1
 
@@ -48,7 +49,7 @@ SECRET_KEY = 'secret'
 
 ROOT_URLCONF = 'tests.urls'
 
-INSTALLED_APPS = (
+INSTALLED_APPS = [
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
@@ -59,12 +60,20 @@ INSTALLED_APPS = (
     'provider',
     'provider.oauth2',
     'django_nose',
-)
+]
 
-MIDDLEWARE_CLASSES = (
+# When we drop support for Django 1.8 we can remove MIDDLEWARE_CLASSES
+MIDDLEWARE_CLASSES = MIDDLEWARE = [
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
-)
+]
+
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'APP_DIRS': True,
+    },
+]
 
 TEST_RUNNER = 'django_nose.NoseTestSuiteRunner'
