@@ -17,15 +17,27 @@ customizable OAuth2\-authentication for your Django projects.
 Release Notes
 =============
 
+1.2.2
+-----
+* Add management command to delete expired OAuth2 grant tokens.
+
+1.2.1
+-----
+* Add Django 1.10/1.11 support.
+
+1.2.0
+-----
+* Add 'nonce' to OAuth2 grant tokens model.
+
 1.0.2
 -----
 
 This release contains a backward incompatible change:
 
-* Foreign key reverse names have been specified, so this library can be 
-  installed alongside `django-oauth-toolkit`.  Code that traverses from 
-  the User model to `django-oauth2-provider` models will need to update the 
-  related name used.  
+* Foreign key reverse names have been specified, so this library can be
+  installed alongside `django-oauth-toolkit`.  Code that traverses from
+  the User model to `django-oauth2-provider` models will need to update the
+  related name used.
 
       >>> user.access_token
       >>> user.grant
