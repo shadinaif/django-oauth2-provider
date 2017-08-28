@@ -50,34 +50,29 @@ class Command(BaseCommand):
         if sleep_between < 0:
             raise CommandError('Only non-negative sleep between seconds is allowed ({}).'.format(sleep_between))
 
-        table_name = 'oauth2_grant'
         delete_date = datetime.now()
-        where_clause = "WHERE expires < '{}'".format(delete_date.strftime('%Y-%m-%d %H:%m:%S'))
-        # The "as id" below fools Django raw query into thinking the primary key is being queried.
-        total_expired_tokens = Grant.objects.raw(
-            'SELECT COUNT(*) as id FROM {} {}'.format(table_name, where_clause)
-        )[0].id
-        log.info("STARTED: Deleting %s expired grant tokens older than '%s' with chunk size of %s and %s seconds between chunk.",
+        total_expired_tokens = Grant.objects.filter(expires__lte=delete_date).count()
+
+        log.info(
+            "STARTED: Deleting %s expired grant tokens older than '%s' w/ chunk size of %s and %s secs between chunks",
             total_expired_tokens, delete_date, chunk_size, sleep_between
-        )
+            )
 
         total_deletions = 0
-        while total_deletions < total_expired_tokens:
-            deletions_now = min(chunk_size, total_expired_tokens - total_deletions)
+
+        while True:
+            target_ids = Grant.objects.filter(expires__lte=delete_date).values_list('id', flat=True)[:chunk_size]
+            deletions_now = len(target_ids)
+
+            if not deletions_now:
+                break
+
+            Grant.objects.filter(id__in=target_ids).delete()
+
             log.info("Deleting %s expired tokens...", deletions_now)
-            with transaction.atomic():
-                delete_sql = 'DELETE FROM {} WHERE id IN (SELECT id FROM {} {} LIMIT {})'.format(
-                    table_name, table_name, where_clause, deletions_now
-                )
-                log.info(delete_sql)
-                try:
-                    list(Grant.objects.raw(delete_sql))
-                except TypeError:
-                    # The list() above is simply to get the RawQuerySet to be evaluated.
-                    # Without evaluation, the raw DELETE SQL will *not* actually execute.
-                    # But - it will cause a "TypeError: 'NoneType' object is not iterable" to be ignored.
-                    pass
+
             total_deletions += deletions_now
             log.info("Sleeping %s seconds...", sleep_between)
             time.sleep(sleep_between)
+
         log.info("FINISHED: Deleted %s expired grant tokens total.", total_deletions)
