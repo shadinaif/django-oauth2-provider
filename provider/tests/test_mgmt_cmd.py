@@ -57,7 +57,6 @@ class TestDeleteExpiredGrantTokens(unittest.TestCase):
         self.assertEqual(Grant.objects.all().count(), 10)
 
     def test_multiple_chunk_delete(self):
-        Command.CHUNK_SIZE = 2
+        Command.DEFAULT_CHUNK_SIZE = 2
         call_command(self.command_name)
         self.assertEqual(Grant.objects.all().count(), 10)
-
