@@ -2,11 +2,12 @@
 Command to delete expired OAuth2 grant tokens from the oauth2_grant table.
 """
 
-from datetime import datetime, timedelta
+from datetime import datetime
 import logging
 import time
 from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
+from django.db.models import Min, Max
 from provider.oauth2.models import Grant
 
 log = logging.getLogger(__name__)
@@ -52,27 +53,26 @@ class Command(BaseCommand):
 
         delete_date = datetime.now()
         total_expired_tokens = Grant.objects.filter(expires__lte=delete_date).count()
+        ids = Grant.objects.all().aggregate(Min('id'), Max('id'))
+        min_id = ids['id__min']
+        max_id = ids['id__max']
 
         log.info(
-            "STARTED: Deleting %s expired grant tokens older than '%s' w/ chunk size of %s and %s secs between chunks",
-            total_expired_tokens, delete_date, chunk_size, sleep_between
+            "STARTED: Deleting %s expired grant tokens older than '%s' w/ chunk size of %s and %s secs between chunks. "
+            "Ids are %s - %s.",
+            total_expired_tokens, delete_date, chunk_size, sleep_between, min_id, max_id
             )
 
-        total_deletions = 0
-
         while True:
-            target_ids = Grant.objects.filter(expires__lte=delete_date).values_list('id', flat=True)[:chunk_size]
-            deletions_now = len(target_ids)
+            log.info("Deleting up to %s expired tokens with id <= %s", chunk_size, min_id+chunk_size)
+            with transaction.atomic():
+                Grant.objects.filter(id__lte=min_id+chunk_size, expires__lte=delete_date).delete()
 
-            if not deletions_now:
+            min_id += chunk_size
+            if min_id > max_id:
                 break
 
-            Grant.objects.filter(id__in=target_ids).delete()
-
-            log.info("Deleting %s expired tokens...", deletions_now)
-
-            total_deletions += deletions_now
             log.info("Sleeping %s seconds...", sleep_between)
             time.sleep(sleep_between)
 
-        log.info("FINISHED: Deleted %s expired grant tokens total.", total_deletions)
+        log.info("FINISHED: Deleted %s expired grant tokens total.", total_expired_tokens)

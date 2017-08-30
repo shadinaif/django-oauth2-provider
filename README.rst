@@ -16,6 +16,10 @@ customizable OAuth2\-authentication for your Django projects.
 
 Release Notes
 =============
+1.2.4
+-----
+* More management command MySQL compatibility updates.
+
 1.2.3
 -----
 * Update management command to be MySQL 5.6 compatible, use ORM for deletions.
