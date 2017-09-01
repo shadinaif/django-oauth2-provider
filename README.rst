@@ -16,6 +16,10 @@ customizable OAuth2\-authentication for your Django projects.
 
 Release Notes
 =============
+1.2.5
+-----
+* Added management command to delete expired OAuth2 access and refresh tokens.
+
 1.2.4
 -----
 * More management command MySQL compatibility updates.
