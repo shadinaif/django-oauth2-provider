@@ -1,6 +1,6 @@
 import json
-import urllib
-import urlparse
+import six
+from six.moves.urllib.parse import urlparse, ParseResult
 
 from django.core.exceptions import ObjectDoesNotExist
 from django.http import HttpResponse
@@ -9,7 +9,7 @@ from django.utils.http import urlencode
 from django.utils.translation import ugettext as _
 from django.views.generic.base import TemplateView
 
-from oauth2.models import Client
+from provider.oauth2.models import Client
 from provider import constants, scope
 
 
@@ -167,9 +167,9 @@ class Mixin(object):
         """
         Clear all OAuth related data from the session store.
         """
-        for key in request.session.keys():
+        for key in list(request.session.keys()):
             session_key = constants.SESSION_KEY
-            if isinstance(key, basestring) and key.startswith(session_key):
+            if isinstance(key, six.string_types) and key.startswith(session_key):
                 del request.session[key]
 
     def authenticate(self, request):
@@ -382,7 +382,7 @@ class Authorize(OAuthView, Mixin, AccessTokenMixin):
 
         try:
             client, data = self._validate_client(request, data)
-        except OAuthError, e:
+        except OAuthError as e:
             return self.error_response(request, e.args[0], status=400)
 
         authorization_form = self.get_authorization_form(request, client, post_data, data)
@@ -403,14 +403,14 @@ class Authorize(OAuthView, Mixin, AccessTokenMixin):
             }
 
             url = "{0}?{1}".format(
-                client.redirect_uri, urllib.urlencode(response_data))
+                client.redirect_uri, urlencode(response_data))
 
             return HttpResponseRedirect(url)
 
         if 'token' in data['response_type']:
             try:
                 return self.get_implicit_response(request, client)
-            except OAuthError, e:
+            except OAuthError as e:
                 return self.error_response(request, e.args[0], status=400)
 
         code = self.save_authorization(request, client, authorization_form, data)
@@ -464,7 +464,7 @@ class Redirect(OAuthView, Mixin):
 
         redirect_uri = data.get('redirect_uri', None) or client.redirect_uri
 
-        parsed = urlparse.urlparse(redirect_uri)
+        parsed = urlparse(redirect_uri)
 
         query = QueryDict('', mutable=True)
 
@@ -480,7 +480,7 @@ class Redirect(OAuthView, Mixin):
 
         parsed = parsed[:4] + (query.urlencode(), '')
 
-        redirect_uri = urlparse.ParseResult(*parsed).geturl()
+        redirect_uri = ParseResult(*parsed).geturl()
 
         self.clear_data(request)
 
@@ -714,5 +714,5 @@ class AccessToken(OAuthView, Mixin, AccessTokenMixin):
 
         try:
             return handler(request, request.POST, client)
-        except OAuthError, e:
+        except OAuthError as e:
             return self.error_response(e.args[0])

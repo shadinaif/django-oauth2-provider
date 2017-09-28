@@ -1,7 +1,9 @@
+import base64
 import datetime
 import json
-import urlparse
+import six
 import uuid
+from six.moves.urllib.parse import urlparse, parse_qs
 
 import ddt
 from django.conf import settings
@@ -24,7 +26,7 @@ from provider.utils import now as date_now
 class BaseOAuth2TestCase(TestCase):
     def setUp(self):
         super(BaseOAuth2TestCase, self).setUp()
-        self.nonce = unicode(uuid.uuid4())
+        self.nonce = six.text_type(uuid.uuid4())
 
     def login(self):
         self.client.login(username='test-user-1', password='test')
@@ -89,7 +91,7 @@ class AuthorizationTest(BaseOAuth2TestCase):
 
         # Login redirect
         self.assertEqual(302, response.status_code)
-        self.assertEqual('/login/', urlparse.urlparse(response['Location']).path)
+        self.assertEqual('/login/', urlparse(response['Location']).path)
 
         self.login()
 
@@ -112,9 +114,9 @@ class AuthorizationTest(BaseOAuth2TestCase):
         self.login()
         self.client.get(self.auth_url(), data=self.get_auth_params(response_type='token', scope=requested_scope))
         response = self.client.post(self.auth_url2(), {'authorize': True})
-        fragment = urlparse.urlparse(response['Location']).fragment
-        auth_response_data = {k: v[0] for k, v in urlparse.parse_qs(fragment).items()}
-        self.assertItemsEqual(auth_response_data['scope'].split(' '), expected_scope.split(' '))
+        fragment = urlparse(response['Location']).fragment
+        auth_response_data = {k: v[0] for k, v in parse_qs(fragment).items()}
+        six.assertCountEqual(self, auth_response_data['scope'].split(' '), expected_scope.split(' '))
         self.assertEqual(auth_response_data['access_token'], AccessToken.objects.all()[0].token)
         self.assertEqual(auth_response_data['token_type'], 'Bearer')
         self.assertEqual(int(auth_response_data['expires_in']), constants.EXPIRE_DELTA.days * 60 * 60 * 24 - 1)
@@ -127,7 +129,7 @@ class AuthorizationTest(BaseOAuth2TestCase):
         response = self.client.get(self.auth_url2())
 
         self.assertEqual(400, response.status_code)
-        self.assertTrue("An unauthorized client tried to access your resources." in response.content)
+        self.assertTrue(b"An unauthorized client tried to access your resources." in response.content)
 
     @ddt.data('code', 'token')
     def test_authorization_rejects_invalid_client_id(self, response_type):
@@ -136,7 +138,7 @@ class AuthorizationTest(BaseOAuth2TestCase):
         response = self.client.get(self.auth_url2())
 
         self.assertEqual(400, response.status_code)
-        self.assertTrue("An unauthorized client tried to access your resources." in response.content)
+        self.assertTrue(b"An unauthorized client tried to access your resources." in response.content)
 
     def test_authorization_requires_response_type(self):
         self.login()
@@ -144,7 +146,7 @@ class AuthorizationTest(BaseOAuth2TestCase):
         response = self.client.get(self.auth_url2())
 
         self.assertEqual(400, response.status_code)
-        self.assertTrue(escape(u"No 'response_type' supplied.") in response.content)
+        self.assertTrue(escape("No 'response_type' supplied.").encode() in response.content)
 
     @ddt.data('code', 'token', 'unsupported')
     def test_authorization_requires_supported_response_type(self, response_type):
@@ -155,7 +157,7 @@ class AuthorizationTest(BaseOAuth2TestCase):
 
         if response_type == 'unsupported':
             self.assertEqual(400, response.status_code)
-            self.assertTrue(escape(u"'unsupported' is not a supported response type.") in response.content)
+            self.assertTrue(escape("'unsupported' is not a supported response type.").encode() in response.content)
 
         else:
             self.assertEqual(200, response.status_code)
@@ -172,7 +174,7 @@ class AuthorizationTest(BaseOAuth2TestCase):
         self.assertEqual(302, response2.status_code)
         url, fragment = response2.get('location').split('#')
         self.assertEqual(url, self.get_client().redirect_uri)
-        self.assertTrue('access_token' in urlparse.parse_qs(fragment))
+        self.assertTrue('access_token' in parse_qs(fragment))
 
     @patch('provider.constants.SINGLE_ACCESS_TOKEN', True)
     def test_token_ignores_expired_tokens(self):
@@ -251,7 +253,8 @@ class AuthorizationTest(BaseOAuth2TestCase):
         response = self.client.get(self.auth_url2())
 
         self.assertEqual(400, response.status_code)
-        self.assertTrue(escape(u"The requested redirect didn't match the client settings.") in response.content)
+        self.assertTrue(
+            escape("The requested redirect didn't match the client settings.").encode() in response.content)
 
         self.client.get(self.auth_url(), data=self.get_auth_params(
             response_type=response_type, redirect_uri=self.get_client().redirect_uri))
@@ -267,7 +270,7 @@ class AuthorizationTest(BaseOAuth2TestCase):
         response = self.client.get(self.auth_url2())
 
         self.assertEqual(400, response.status_code)
-        self.assertTrue(escape(u"'invalid' is not a valid scope.") in response.content,
+        self.assertTrue(escape("'invalid' is not a valid scope.").encode() in response.content,
                         'Expected `{0}` in {1}'.format(escape(u"'invalid' is not a valid scope."), response.content))
 
         self.client.get(
@@ -287,18 +290,18 @@ class AuthorizationTest(BaseOAuth2TestCase):
         if response_type == 'code':
             # authorization code flow
             response = self.client.get(self.redirect_url())
-            query = urlparse.urlparse(response['Location']).query
-            code = urlparse.parse_qs(query)['code'][0]
+            query = urlparse(response['Location']).query
+            code = parse_qs(query)['code'][0]
             response = self.client.post(self.access_token_url(), {
                 'grant_type': 'authorization_code',
                 'client_id': self.get_client().client_id,
                 'client_secret': self.get_client().client_secret,
                 'code': code})
-            scope_str = json.loads(response.content).get('scope')
+            scope_str = json.loads(response.content.decode()).get('scope')
         else:
             # implicit flow
-            fragment = urlparse.urlparse(response['Location']).fragment
-            scope_str = urlparse.parse_qs(fragment)['scope'][0]
+            fragment = urlparse(response['Location']).fragment
+            scope_str = parse_qs(fragment)['scope'][0]
 
         self.assertEqual(scope_str, constants.SCOPES[0][1])
 
@@ -379,7 +382,7 @@ class AccessTokenTest(BaseOAuth2TestCase):
             'client_secret': self.get_client().client_secret, })
 
         self.assertEqual(400, response.status_code, response.content)
-        self.assertEqual('invalid_client', json.loads(response.content)['error'])
+        self.assertEqual('invalid_client', json.loads(response.content.decode())['error'])
 
     def test_fetching_access_token_with_invalid_grant(self):
         self.login()
@@ -392,7 +395,7 @@ class AccessTokenTest(BaseOAuth2TestCase):
             'code': '123'})
 
         self.assertEqual(400, response.status_code, response.content)
-        self.assertEqual('invalid_grant', json.loads(response.content)['error'])
+        self.assertEqual('invalid_grant', json.loads(response.content.decode())['error'])
 
     def _login_authorize_get_token(self):
         required_props = ['access_token', 'token_type']
@@ -401,7 +404,7 @@ class AccessTokenTest(BaseOAuth2TestCase):
         self._login_and_authorize()
 
         response = self.client.get(self.redirect_url())
-        query = QueryDict(urlparse.urlparse(response['Location']).query)
+        query = QueryDict(urlparse(response['Location']).query)
         code = query['code']
 
         response = self.client.post(self.access_token_url(), {
@@ -412,7 +415,7 @@ class AccessTokenTest(BaseOAuth2TestCase):
 
         self.assertEqual(200, response.status_code, response.content)
 
-        token = json.loads(response.content)
+        token = json.loads(response.content.decode())
 
         for prop in required_props:
             self.assertIn(prop, token, "Access token response missing required property: %s" % prop)
@@ -427,7 +430,7 @@ class AccessTokenTest(BaseOAuth2TestCase):
         self._login_and_authorize()
         response = self.client.get(self.redirect_url())
 
-        query = QueryDict(urlparse.urlparse(response['Location']).query)
+        query = QueryDict(urlparse(response['Location']).query)
         code = query['code']
 
         response = self.client.post(self.access_token_url(), {
@@ -438,7 +441,7 @@ class AccessTokenTest(BaseOAuth2TestCase):
         })
 
         self.assertEqual(400, response.status_code)
-        self.assertEqual('unsupported_grant_type', json.loads(response.content)['error'], response.content)
+        self.assertEqual('unsupported_grant_type', json.loads(response.content.decode())['error'], response.content)
 
     @patch('provider.constants.SINGLE_ACCESS_TOKEN', True)
     def test_fetching_single_access_token(self):
@@ -471,7 +474,7 @@ class AccessTokenTest(BaseOAuth2TestCase):
             'code': code})
 
         self.assertEqual(400, response.status_code)
-        self.assertEqual('invalid_grant', json.loads(response.content)['error'])
+        self.assertEqual('invalid_grant', json.loads(response.content.decode())['error'])
 
     def test_escalating_the_scope(self):
         self.login()
@@ -486,7 +489,7 @@ class AccessTokenTest(BaseOAuth2TestCase):
             'scope': 'read write'})
 
         self.assertEqual(400, response.status_code)
-        self.assertEqual('invalid_scope', json.loads(response.content)['error'])
+        self.assertEqual('invalid_scope', json.loads(response.content.decode())['error'])
 
     def test_refreshing_an_access_token(self):
         token = self._login_authorize_get_token()
@@ -508,7 +511,7 @@ class AccessTokenTest(BaseOAuth2TestCase):
         })
 
         self.assertEqual(400, response.status_code)
-        self.assertEqual('invalid_grant', json.loads(response.content)['error'], response.content)
+        self.assertEqual('invalid_grant', json.loads(response.content.decode())['error'], response.content)
 
     def test_password_grant_public(self):
         c = self.get_client()
@@ -524,8 +527,8 @@ class AccessTokenTest(BaseOAuth2TestCase):
         })
 
         self.assertEqual(200, response.status_code, response.content)
-        self.assertNotIn('refresh_token', json.loads(response.content))
-        expires_in = json.loads(response.content)['expires_in']
+        self.assertNotIn('refresh_token', json.loads(response.content.decode()))
+        expires_in = json.loads(response.content.decode())['expires_in']
         expires_in_days = round(expires_in / (60.0 * 60.0 * 24.0))
         self.assertEqual(expires_in_days, constants.EXPIRE_DELTA_PUBLIC.days)
 
@@ -543,7 +546,7 @@ class AccessTokenTest(BaseOAuth2TestCase):
         })
 
         self.assertEqual(200, response.status_code, response.content)
-        self.assertTrue(json.loads(response.content)['refresh_token'])
+        self.assertTrue(json.loads(response.content.decode())['refresh_token'])
 
     def test_password_grant_confidential_no_secret(self):
         c = self.get_client()
@@ -557,7 +560,7 @@ class AccessTokenTest(BaseOAuth2TestCase):
             'password': self.get_password(),
         })
 
-        self.assertEqual('invalid_client', json.loads(response.content)['error'])
+        self.assertEqual('invalid_client', json.loads(response.content.decode())['error'])
 
     def test_password_grant_invalid_password_public(self):
         c = self.get_client()
@@ -572,7 +575,7 @@ class AccessTokenTest(BaseOAuth2TestCase):
         })
 
         self.assertEqual(400, response.status_code, response.content)
-        self.assertEqual('invalid_client', json.loads(response.content)['error'])
+        self.assertEqual('invalid_client', json.loads(response.content.decode())['error'])
 
     def test_password_grant_invalid_password_confidential(self):
         c = self.get_client()
@@ -588,7 +591,7 @@ class AccessTokenTest(BaseOAuth2TestCase):
         })
 
         self.assertEqual(400, response.status_code, response.content)
-        self.assertEqual('invalid_grant', json.loads(response.content)['error'])
+        self.assertEqual('invalid_grant', json.loads(response.content.decode())['error'])
 
     def test_access_token_response_valid_token_type(self):
         token = self._login_authorize_get_token()
@@ -641,7 +644,7 @@ class ClientCredentialsAccessTokenTests(BaseOAuth2TestCase):
             u'scope': u' '.join(scope.names(access_token.scope)),
         }
 
-        self.assertEqual(json.loads(response.content), expected)
+        self.assertEqual(json.loads(response.content.decode()), expected)
 
     def get_latest_access_token(self):
         return AccessToken.objects.filter(client=self.get_client()).order_by('-id')[0]
@@ -663,7 +666,7 @@ class ClientCredentialsAccessTokenTests(BaseOAuth2TestCase):
         """ Verify the endpoint returns HTTP 400 if the credentials are invalid. """
         response = self.request_access_token(**credentials_override)
         self.assertEqual(400, response.status_code, response.content)
-        self.assertDictEqual(json.loads(response.content), {'error': 'invalid_client'})
+        self.assertDictEqual(json.loads(response.content.decode()), {'error': 'invalid_client'})
 
 
 class AuthBackendTest(BaseOAuth2TestCase):
@@ -672,9 +675,9 @@ class AuthBackendTest(BaseOAuth2TestCase):
     def test_basic_client_backend(self):
         factory = RequestFactory()
 
-        auth = "Basic " + "{0}:{1}".format(
+        auth = "Basic " + base64.b64encode("{0}:{1}".format(
             self.get_client().client_id,
-            self.get_client().client_secret).encode('base64')
+            self.get_client().client_secret).encode()).decode()
 
         request = factory.get('', HTTP_AUTHORIZATION=auth)
 
@@ -685,9 +688,9 @@ class AuthBackendTest(BaseOAuth2TestCase):
         factory = RequestFactory()
 
         # No colon here should cause a ValueError for malformed auth
-        auth = "Basic " + "{0}{1}".format(
+        auth = "Basic " + base64.b64encode("{0}{1}".format(
             self.get_client().client_id,
-            self.get_client().client_secret).encode('base64')
+            self.get_client().client_secret).encode()).decode()
 
         request = factory.get('', HTTP_AUTHORIZATION=auth)
 
@@ -749,13 +752,13 @@ class EnforceSecureTest(BaseOAuth2TestCase):
         response = self.client.get(self.auth_url())
 
         self.assertEqual(400, response.status_code)
-        self.assertTrue("A secure connection is required." in response.content)
+        self.assertTrue(b"A secure connection is required." in response.content)
 
     def test_access_token_enforces_SSL(self):
         response = self.client.post(self.access_token_url(), {})
 
         self.assertEqual(400, response.status_code)
-        self.assertTrue("A secure connection is required." in response.content)
+        self.assertTrue(b"A secure connection is required." in response.content)
 
 
 class ClientFormTest(TestCase):
@@ -832,7 +835,7 @@ class DeleteExpiredTest(BaseOAuth2TestCase):
         self.assertTrue('code' in location)
 
         # verify that Grant with code exists
-        code = urlparse.parse_qs(urlparse.urlparse(location).query)['code'][0]
+        code = parse_qs(urlparse(location).query)['code'][0]
         self.assertTrue(Grant.objects.filter(code=code).exists())
 
         # use the code/grant
@@ -842,7 +845,7 @@ class DeleteExpiredTest(BaseOAuth2TestCase):
             'client_secret': self.get_client().client_secret,
             'code': code})
         self.assertEquals(200, response.status_code)
-        token = json.loads(response.content)
+        token = json.loads(response.content.decode())
         self.assertTrue('access_token' in token)
         access_token = token['access_token']
         self.assertTrue('refresh_token' in token)
@@ -862,7 +865,7 @@ class DeleteExpiredTest(BaseOAuth2TestCase):
             'client_secret': self.get_client().client_secret,
         })
         self.assertEqual(200, response.status_code)
-        token = json.loads(response.content)
+        token = json.loads(response.content.decode())
         self.assertTrue('access_token' in token)
         self.assertNotEquals(access_token, token['access_token'])
         self.assertTrue('refresh_token' in token)
@@ -888,7 +891,7 @@ class AccessTokenDetailViewTests(TestCase):
         self.assertEqual(response.status_code, 400)
 
         self.assertEqual(response['Content-Type'], self.JSON_CONTENT_TYPE)
-        self.assertEqual(response.content, json.dumps({'error': 'invalid_token'}))
+        self.assertEqual(json.loads(response.content.decode()), {'error': 'invalid_token'})
 
     def test_invalid_token(self):
         """
@@ -920,4 +923,4 @@ class AccessTokenDetailViewTests(TestCase):
             'scope': 'read',
             'expires': expires.isoformat()
         }
-        self.assertEqual(response.content, json.dumps(expected))
+        self.assertEqual(json.loads(response.content.decode()), expected)

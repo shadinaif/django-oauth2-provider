@@ -16,6 +16,10 @@ customizable OAuth2\-authentication for your Django projects.
 
 Release Notes
 =============
+1.3.0
+-----
+* Added Python 3 support.
+
 1.2.5
 -----
 * Added management command to delete expired OAuth2 access and refresh tokens.

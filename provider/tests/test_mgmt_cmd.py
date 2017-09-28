@@ -26,7 +26,7 @@ class _TokenDeletionTestCase(unittest.TestCase):
         # Make some expired grant tokens.
         expire_time = datetime.now() - timedelta(4)
         log.info("Creating 10 tokens expiring on %s.", expire_time)
-        for i in range(0, 10):
+        for i in range(10):
             # Make sure AccessTokens have their associated RefreshTokens
             if self.model == AccessToken:
                 x = AccessToken.objects.create(expires=expire_time, client_id=9, user_id=14)
@@ -37,7 +37,7 @@ class _TokenDeletionTestCase(unittest.TestCase):
         # Make some non-expired grant tokens.
         expire_time = datetime.now() + timedelta(4)
         log.info("Creating 10 tokens expiring on %s.", expire_time)
-        for i in range(0, 10):
+        for i in range(10):
             if self.model == AccessToken:
                 x = AccessToken.objects.create(expires=expire_time, client_id=10, user_id=15)
                 RefreshToken.objects.create(client_id=10, user_id=15, access_token=x, expired=False)

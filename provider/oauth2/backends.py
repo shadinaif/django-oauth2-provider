@@ -1,3 +1,5 @@
+import base64
+
 from provider.oauth2.forms import ClientAuthForm, PublicPasswordGrantForm
 from provider.oauth2.models import AccessToken
 from provider.utils import now
@@ -30,8 +32,9 @@ class BasicClientBackend(object):
             return None
 
         try:
-            basic, base64 = auth.split(' ')
-            client_id, client_secret = base64.decode('base64').split(':')
+            basic, encoded = auth.split(' ')
+            decoded = base64.b64decode(encoded).decode()
+            client_id, client_secret = decoded.split(':')
 
             form = ClientAuthForm({
                 'client_id': client_id,
