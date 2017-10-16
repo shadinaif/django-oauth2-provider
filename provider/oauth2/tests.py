@@ -1,3 +1,6 @@
+# encoding: utf-8
+from __future__ import unicode_literals
+
 import base64
 import datetime
 import json
@@ -10,7 +13,7 @@ from django.conf import settings
 from django.contrib.auth.models import User
 from django.core.urlresolvers import reverse
 from django.http import QueryDict
-from django.test import TestCase, RequestFactory
+from django.test import TestCase, RequestFactory, override_settings
 from django.utils.html import escape
 from mock import patch
 
@@ -20,7 +23,7 @@ from provider.oauth2.backends import AccessTokenBackend, BasicClientBackend, Req
 from provider.oauth2.forms import ClientForm
 from provider.oauth2.models import Client, Grant, AccessToken, RefreshToken
 from provider.templatetags.scope import scopes
-from provider.utils import now as date_now
+from provider.utils import now as date_now, short_token, long_token
 
 
 class BaseOAuth2TestCase(TestCase):
@@ -924,3 +927,38 @@ class AccessTokenDetailViewTests(TestCase):
             'expires': expires.isoformat()
         }
         self.assertEqual(json.loads(response.content.decode()), expected)
+
+
+class TokensTestCase(TestCase):
+    """Test that `short_token` and `long_token` functions work correctly
+    with settings.SECRET_KEY comprising of bytes as well as text.
+    Previously UnicodeDecodeError was raised on Python 2 while
+    AttributeError was raised on Python 3."""
+
+    @override_settings(SECRET_KEY='привет мир'.encode('utf-8'))
+    def test_short_token_works_with_binary_secret_key(self):
+        try:
+            short_token()
+        except (UnicodeDecodeError, AttributeError) as e:
+            self.fail('short_token raised unexpected: {}'.format(e))
+
+    @override_settings(SECRET_KEY='привет мир'.encode('utf-8'))
+    def test_long_token_works_with_binary_secret_key(self):
+        try:
+            long_token()
+        except (UnicodeDecodeError, AttributeError) as e:
+            self.fail('long_token raised unexpected: {}'.format(e))
+
+    @override_settings(SECRET_KEY='привет мир')
+    def test_short_token_works_with_unicode_secret_key(self):
+        try:
+            short_token()
+        except (UnicodeDecodeError, AttributeError) as e:
+            self.fail('short_token raised unexpected: {}'.format(e))
+
+    @override_settings(SECRET_KEY='привет мир')
+    def test_long_token_works_with_unicode_secret_key(self):
+        try:
+            long_token()
+        except (UnicodeDecodeError, AttributeError) as e:
+            self.fail('long_token raised unexpected: {}'.format(e))
