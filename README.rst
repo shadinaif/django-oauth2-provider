@@ -16,6 +16,11 @@ customizable OAuth2\-authentication for your Django projects.
 
 Release Notes
 =============
+1.3.1
+-----
+* Added support for storing settings.SECRET_KEY as bytes.
+* Added python_2_unicode_compatible decorator to models.
+
 1.3.0
 -----
 * Added Python 3 support.
