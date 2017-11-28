@@ -14,6 +14,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='client',
             name='logout_uri',
-            field=models.URLField(help_text=b"Your application's logout URL", null=True, blank=True),
+            field=models.URLField(help_text="Your application's logout URL", null=True, blank=True),
         ),
     ]

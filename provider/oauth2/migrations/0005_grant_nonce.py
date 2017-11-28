@@ -14,6 +14,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='grant',
             name='nonce',
-            field=models.CharField(default=b'', max_length=255, blank=True),
+            field=models.CharField(default='', max_length=255, blank=True),
         ),
     ]
