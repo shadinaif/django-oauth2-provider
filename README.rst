@@ -16,6 +16,11 @@ customizable OAuth2\-authentication for your Django projects.
 
 Release Notes
 =============
+1.3.3
+-----
+* Have delete management commands handle 0 tokens to delete cases
+* Stop testing on Django < 1.11
+
 1.3.2
 -----
 * Fixed a compatibility issue with migrations and Python 3
