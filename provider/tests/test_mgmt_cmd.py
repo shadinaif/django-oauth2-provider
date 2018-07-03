@@ -75,6 +75,13 @@ class _TokenDeletionTestCase(unittest.TestCase):
         call_command(self.command_name, chunk_size=2)
         self.assertEqual(self.model.objects.all().count(), 10)
 
+    def test_nothing_to_delete(self):
+        call_command(self.command_name)
+        self.assertEqual(self.model.objects.all().count(), 10)
+        # call it again, there's nothing left to delete and it
+        # should handle that case.
+        call_command(self.command_name)
+        self.assertEqual(self.model.objects.all().count(), 10)
 
 class TestDeleteExpiredGrantTokens(_TokenDeletionTestCase):
     """
