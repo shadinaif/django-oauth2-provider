@@ -42,7 +42,7 @@ class UtilsTestCase(TestCase):
             pass
 
         class ParentModel(models.Model):
-            child = models.ForeignKey(ChildModel, null=True)
+            child = models.ForeignKey(ChildModel, on_delete=models.CASCADE, null=True)
 
         reference = ParentModel()
 

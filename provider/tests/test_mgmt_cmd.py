@@ -3,11 +3,16 @@ Unittests for testing management commands.
 """
 import logging
 import unittest
+import uuid
 from datetime import datetime, timedelta
+
+from django.contrib.auth.models import User
 from django.core.management import call_command
 from django.core.management.base import CommandError
+
+from provider import constants
 from provider.management.commands.delete_expired_grant_tokens import Command
-from provider.oauth2.models import Grant, AccessToken, RefreshToken
+from provider.oauth2.models import Client, Grant, AccessToken, RefreshToken
 
 log = logging.getLogger(__name__)
 
@@ -23,26 +28,32 @@ class _TokenDeletionTestCase(unittest.TestCase):
         super(_TokenDeletionTestCase, self).setUp()
         self.command = Command()
 
+        # Make User and Client.
+        user = User.objects.create_user(uuid.uuid4().hex, '%s@example.com' % uuid.uuid4().hex)
+        client = Client.objects.create(client_type=constants.CONFIDENTIAL)
         # Make some expired grant tokens.
         expire_time = datetime.now() - timedelta(4)
         log.info("Creating 10 tokens expiring on %s.", expire_time)
         for i in range(10):
-            # Make sure AccessTokens have their associated RefreshTokens
+            # Make sure AccessTokens have their associated RefreshTokens.
             if self.model == AccessToken:
-                x = AccessToken.objects.create(expires=expire_time, client_id=9, user_id=14)
-                RefreshToken.objects.create(client_id=9, user_id=14, access_token=x, expired=True)
+                x = AccessToken.objects.create(expires=expire_time, client_id=client.id, user_id=user.id)
+                RefreshToken.objects.create(client_id=client.id, user_id=user.id, access_token=x, expired=True)
             else:
-                self.model.objects.create(expires=expire_time, client_id=9, user_id=14)
+                self.model.objects.create(expires=expire_time, client_id=client.id, user_id=user.id)
 
+        # Make User and Client.
+        user = User.objects.create_user(uuid.uuid4().hex, '%s@example.com' % uuid.uuid4().hex)
+        client = Client.objects.create(client_type=constants.CONFIDENTIAL)
         # Make some non-expired grant tokens.
         expire_time = datetime.now() + timedelta(4)
         log.info("Creating 10 tokens expiring on %s.", expire_time)
         for i in range(10):
             if self.model == AccessToken:
-                x = AccessToken.objects.create(expires=expire_time, client_id=10, user_id=15)
-                RefreshToken.objects.create(client_id=10, user_id=15, access_token=x, expired=False)
+                x = AccessToken.objects.create(expires=expire_time, client_id=client.id, user_id=user.id)
+                RefreshToken.objects.create(client_id=client.id, user_id=user.id, access_token=x, expired=False)
             else:
-                self.model.objects.create(expires=expire_time, client_id=10, user_id=15)
+                self.model.objects.create(expires=expire_time, client_id=client.id, user_id=user.id)
 
     def tearDown(self):
         super(_TokenDeletionTestCase, self).tearDown()

@@ -2,8 +2,8 @@ from datetime import timedelta
 import json
 
 from django.core.exceptions import ObjectDoesNotExist
-from django.core.urlresolvers import reverse
 from django.http import HttpResponseBadRequest, HttpResponse
+from django.urls import reverse
 from django.views.generic import View
 
 from provider import constants

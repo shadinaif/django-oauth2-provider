@@ -11,9 +11,9 @@ from six.moves.urllib.parse import urlparse, parse_qs
 import ddt
 from django.conf import settings
 from django.contrib.auth.models import User
-from django.core.urlresolvers import reverse
 from django.http import QueryDict
 from django.test import TestCase, RequestFactory, override_settings
+from django.urls import reverse
 from django.utils.html import escape
 from mock import patch
 

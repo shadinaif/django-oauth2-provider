@@ -26,7 +26,7 @@ setup(
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
     ],
-    install_requires=['shortuuid>=0.4.3,<1.0.0', 'Django>=1.8,<2.0'],
+    install_requires=['shortuuid>=0.4.3,<1.0.0', 'Django>=1.11,<2.1'],
     include_package_data=True,
     zip_safe=False,
 )

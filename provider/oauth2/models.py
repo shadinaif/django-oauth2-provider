@@ -42,7 +42,8 @@ class Client(models.Model):
         # See https://code.djangoproject.com/ticket/23348
         app_label = "oauth2"
 
-    user = models.ForeignKey(AUTH_USER_MODEL, related_name='oauth2_client', blank=True, null=True)
+    user = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='oauth2_client',
+                             blank=True, null=True)
     name = models.CharField(max_length=255, blank=True)
     url = models.URLField(help_text="Your application's URL.")
     redirect_uri = models.URLField(help_text="Your application's callback URL")
@@ -81,8 +82,8 @@ class Client(models.Model):
             val = data.get(field.name, None)
 
             # handle relations
-            if val and field.rel:
-                val = deserialize_instance(field.rel.to, val)
+            if val and field.remote_field:
+                val = deserialize_instance(field.remote_field.model, val)
 
             kwargs[name] = val
 
@@ -111,8 +112,8 @@ class Grant(models.Model):
         app_label = "oauth2"
         index_together = ["client", "code", "expires"]
 
-    user = models.ForeignKey(AUTH_USER_MODEL, related_name='dop_grant')
-    client = models.ForeignKey(Client)
+    user = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='dop_grant')
+    client = models.ForeignKey(Client, on_delete=models.CASCADE)
     code = models.CharField(max_length=255, default=long_token)
     nonce = models.CharField(max_length=255, blank=True, default='')
     expires = models.DateTimeField(default=get_code_expiry)
@@ -148,9 +149,9 @@ class AccessToken(models.Model):
     class Meta:
         app_label = "oauth2"
 
-    user = models.ForeignKey(AUTH_USER_MODEL, related_name='dop_access_token')
+    user = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='dop_access_token')
     token = models.CharField(max_length=255, default=long_token, db_index=True)
-    client = models.ForeignKey(Client)
+    client = models.ForeignKey(Client, on_delete=models.CASCADE)
     expires = models.DateTimeField()
     scope = models.IntegerField(default=constants.SCOPES[0][0],
                                 choices=constants.SCOPES)
@@ -203,11 +204,11 @@ class RefreshToken(models.Model):
     class Meta:
         app_label = "oauth2"
 
-    user = models.ForeignKey(AUTH_USER_MODEL, related_name='dop_refresh_token')
+    user = models.ForeignKey(AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='dop_refresh_token')
     token = models.CharField(max_length=255, default=long_token)
-    access_token = models.OneToOneField(AccessToken,
+    access_token = models.OneToOneField(AccessToken, on_delete=models.CASCADE,
                                         related_name='refresh_token')
-    client = models.ForeignKey(Client)
+    client = models.ForeignKey(Client, on_delete=models.CASCADE)
     expired = models.BooleanField(default=False)
 
     def __str__(self):

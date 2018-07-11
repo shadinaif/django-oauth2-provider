@@ -15,16 +15,16 @@ class Migration(migrations.Migration):
         migrations.AlterField(
             model_name='accesstoken',
             name='user',
-            field=models.ForeignKey(related_name='dop_access_token', to=settings.AUTH_USER_MODEL),
+            field=models.ForeignKey(on_delete=models.CASCADE, related_name='dop_access_token', to=settings.AUTH_USER_MODEL),
         ),
         migrations.AlterField(
             model_name='grant',
             name='user',
-            field=models.ForeignKey(related_name='dop_grant', to=settings.AUTH_USER_MODEL),
+            field=models.ForeignKey(on_delete=models.CASCADE, related_name='dop_grant', to=settings.AUTH_USER_MODEL),
         ),
         migrations.AlterField(
             model_name='refreshtoken',
             name='user',
-            field=models.ForeignKey(related_name='dop_refresh_token', to=settings.AUTH_USER_MODEL),
+            field=models.ForeignKey(on_delete=models.CASCADE, related_name='dop_refresh_token', to=settings.AUTH_USER_MODEL),
         ),
     ]
