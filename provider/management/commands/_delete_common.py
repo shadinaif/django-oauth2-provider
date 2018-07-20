@@ -78,9 +78,12 @@ class DeleteCommand(BaseCommand):
             )
 
         while True:
-            log.info("Deleting up to %s expired tokens with id <= %s", chunk_size, min_id+chunk_size)
+            log.info("Deleting up to %s expired tokens with id >= %s and id <= %s", chunk_size, min_id, min_id+chunk_size)
             with transaction.atomic():
-                self.model.objects.filter(id__lte=min_id+chunk_size, expires__lte=delete_date).delete()
+                self.model.objects.filter(id__lte=min_id+chunk_size,
+                                          id__gte=min_id,
+                                          expires__lte=delete_date
+                                         ).delete()
 
             min_id += chunk_size
             if min_id > max_id:
