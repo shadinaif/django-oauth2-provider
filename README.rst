@@ -16,6 +16,14 @@ customizable OAuth2\-authentication for your Django projects.
 
 Release Notes
 =============
+1.3.4
+-----
+* Have the delete management commands only scan from the smallest expired token
+  to the max expired token.
+* While deleting, only examine chunk_size rows for expired rows to delete.
+* Fix warnings about using a datetime without a timezone in the delete
+  management command.
+
 1.3.3
 -----
 * Have delete management commands handle 0 tokens to delete cases
