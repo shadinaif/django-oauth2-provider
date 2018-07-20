@@ -2,7 +2,7 @@
 Base Command class to delete expired rows from the various oauth2 tables.
 """
 
-from datetime import datetime
+from django.utils import timezone
 import logging
 import time
 from django.core.management.base import BaseCommand, CommandError
@@ -59,7 +59,7 @@ class DeleteCommand(BaseCommand):
         if not self.model:
             raise CommandError('No model specified!')
 
-        delete_date = datetime.now()
+        delete_date = timezone.now()
 
         total_expired_tokens = self.model.objects.filter(expires__lte=delete_date).count()
 
