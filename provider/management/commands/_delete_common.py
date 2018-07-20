@@ -67,7 +67,7 @@ class DeleteCommand(BaseCommand):
             log.info("SKIP - No expired %s tokens older than %s", self.model, delete_date)
             return
 
-        ids = self.model.objects.all().aggregate(Min('id'), Max('id'))
+        ids = self.model.objects.filter(expires__lte=delete_date).aggregate(Min('id'), Max('id'))
         min_id = ids['id__min']
         max_id = ids['id__max']
 
